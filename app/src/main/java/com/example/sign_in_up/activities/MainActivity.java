@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void setListeners(){
         binding.imageSignOut.setOnClickListener(view -> signOut());
+        binding.fabNewChat.setOnClickListener(v ->
+                startActivity(new Intent(getApplicationContext(), userActivity.class)));
     }
 
     private void loadUserDetails(){
