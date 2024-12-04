@@ -44,6 +44,11 @@ public class ChatActivity extends AppCompatActivity {
     private PreferenceManager preferenceManager;
     private FirebaseFirestore database;
 
+    /**
+     * Called when the activity is created. Initializes the activity, loads chat data, and sets up listeners.
+     *
+     * @param savedInstanceState the saved instance state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +60,10 @@ public class ChatActivity extends AppCompatActivity {
         ListenMessage();
     }
 
-    private void init(){
+    /**
+     * Initializes chat data and sets up the chat adapter and Firestore instance.
+     */
+    private void init() {
         preferenceManager = new PreferenceManager((getApplicationContext()));
         chatMessages = new ArrayList<>();
         chatAdapter = new ChatAdapter(
@@ -64,15 +72,16 @@ public class ChatActivity extends AppCompatActivity {
                 preferenceManager.getString(Constants.KEY_USER_ID)
         );
         binding.chatRecyclerView.setAdapter(chatAdapter);
-        database= FirebaseFirestore.getInstance();
+        database = FirebaseFirestore.getInstance();
     }
 
-    private void sendMessages(){
+    /**
+     * Sends a new message to the Firestore database.
+     */
+    private void sendMessages() {
         HashMap<String, Object> message = new HashMap<>();
-
-        message.put(Constants.KEY_SENDER_ID,preferenceManager.getString(Constants.KEY_USER_ID));
+        message.put(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID));
         message.put(Constants.KEY_RECEIVER_ID, receiverUser.id);
-
         message.put(Constants.KEY_MESSAGE, binding.inputMessage.getText().toString());
         message.put(Constants.KEY_TIMESTAMP, new Date());
 
@@ -80,7 +89,10 @@ public class ChatActivity extends AppCompatActivity {
         binding.inputMessage.setText(null);
     }
 
-    private void ListenMessage(){
+    /**
+     * Listens for real-time updates to the chat messages in Firestore.
+     */
+    private void ListenMessage() {
         database.collection(Constants.KEY_COLLECTION_CHAT)
                 .whereEqualTo(Constants.KEY_SENDER_ID,
                         preferenceManager.getString(Constants.KEY_USER_ID))
@@ -93,60 +105,76 @@ public class ChatActivity extends AppCompatActivity {
                 .whereEqualTo(Constants.KEY_RECEIVER_ID,
                         preferenceManager.getString(Constants.KEY_USER_ID))
                 .addSnapshotListener(eventListener);
-
     }
 
-    private final EventListener<QuerySnapshot> eventListener = ((value,error) ->{
-        if(error !=null){
+    /**
+     * Listener for Firestore snapshot changes to update the chat messages in real-time.
+     */
+    private final EventListener<QuerySnapshot> eventListener = ((value, error) -> {
+        if (error != null) {
             return;
         }
-        if(value != null){
+        if (value != null) {
             int count = chatMessages.size();
-            for(DocumentChange documentChange:value.getDocumentChanges()){
-                if(documentChange.getType() == DocumentChange.Type.ADDED){
+            for (DocumentChange documentChange : value.getDocumentChanges()) {
+                if (documentChange.getType() == DocumentChange.Type.ADDED) {
                     ChatMessage chatMessage = new ChatMessage();
                     chatMessage.senderId = documentChange.getDocument().getString(Constants.KEY_SENDER_ID);
                     chatMessage.receiverId = documentChange.getDocument().getString(Constants.KEY_RECEIVER_ID);
                     chatMessage.message = documentChange.getDocument().getString(Constants.KEY_MESSAGE);
                     chatMessage.dateTime = getReadableDateTime(
                             documentChange.getDocument().getDate(Constants.KEY_TIMESTAMP));
-
                     chatMessage.dateObject = documentChange.getDocument().getDate(Constants.KEY_TIMESTAMP);
                     chatMessages.add(chatMessage);
                 }
             }
 
-            Collections.sort(chatMessages,(obj1,obj2) -> obj1.dateObject.compareTo(obj2.dateObject));
-            if(count == 0){
+            Collections.sort(chatMessages, (obj1, obj2) -> obj1.dateObject.compareTo(obj2.dateObject));
+            if (count == 0) {
                 chatAdapter.notifyDataSetChanged();
             } else {
                 chatAdapter.notifyItemChanged(chatMessages.size(), chatMessages.size());
-
-                binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size()-1);
+                binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size() - 1);
             }
             binding.chatRecyclerView.setVisibility(View.VISIBLE);
         }
-
         binding.progressBar.setVisibility(View.GONE);
     });
 
-    private Bitmap getBitmapFromEncodedString(String encodedImage){
-        byte[] bytes = Base64.decode(encodedImage,Base64.DEFAULT);
-        return BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+    /**
+     * Converts a Base64-encoded string to a Bitmap.
+     *
+     * @param encodedImage the Base64-encoded image string
+     * @return the decoded Bitmap image
+     */
+    private Bitmap getBitmapFromEncodedString(String encodedImage) {
+        byte[] bytes = Base64.decode(encodedImage, Base64.DEFAULT);
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
     }
 
-    private void loadReceiverDetails(){
+    /**
+     * Loads the receiver's details from the intent extras and updates the UI.
+     */
+    private void loadReceiverDetails() {
         receiverUser = (User) getIntent().getSerializableExtra(Constants.KEY_USER);
         binding.textName.setText(receiverUser.name);
     }
 
-    private void setListeners(){
+    /**
+     * Sets up listeners for user interaction events.
+     */
+    private void setListeners() {
         binding.imageBack.setOnClickListener(v -> onBackPressed());
-
         binding.layoutSend.setOnClickListener(v -> sendMessages());
     }
 
-    private String getReadableDateTime(Date date){
+    /**
+     * Formats a date into a readable string.
+     *
+     * @param date the date to format
+     * @return the formatted date string
+     */
+    private String getReadableDateTime(Date date) {
         return new SimpleDateFormat("MMM dd, yyyy - hh:mm a",
                 Locale.getDefault()).format(date);
     }

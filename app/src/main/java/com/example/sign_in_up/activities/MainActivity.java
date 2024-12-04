@@ -29,56 +29,81 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private PreferenceManager preferenceManager;
 
+    /**
+     * Called when the activity is first created.
+     *
+     * @param savedInstanceState the saved instance state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         preferenceManager = new PreferenceManager(getApplicationContext());
         loadUserDetails();
         getToken();
         setListeners();
-
     }
 
-    private void setListeners(){
+    /**
+     * Sets up click listeners for UI elements.
+     */
+    private void setListeners() {
         binding.imageSignOut.setOnClickListener(view -> signOut());
         binding.fabNewChat.setOnClickListener(v ->
                 startActivity(new Intent(getApplicationContext(), userActivity.class)));
     }
 
-    private void loadUserDetails(){
+    /**
+     * Loads user details (name and profile picture) into the UI from shared preferences.
+     */
+    private void loadUserDetails() {
         binding.textName.setText(preferenceManager.getString(Constants.KEY_FNAME) + " " + preferenceManager.getString(Constants.KEY_LNAME));
 
-        byte[] bytes = Base64.decode(preferenceManager.getString(Constants.KEY_IMAGE),Base64.DEFAULT);
-        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
+        byte[] bytes = Base64.decode(preferenceManager.getString(Constants.KEY_IMAGE), Base64.DEFAULT);
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         binding.imageProfile.setImageBitmap(bitmap);
     }
 
+    /**
+     * Displays a toast message.
+     *
+     * @param message the message to display
+     */
     private void showToast(String message) {
-        Toast.makeText(getApplicationContext(),message,Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
 
-    private void getToken(){
+    /**
+     * Fetches the FCM token and updates it in Firestore.
+     */
+    private void getToken() {
         FirebaseMessaging.getInstance().getToken().addOnSuccessListener(this::updateToken);
     }
 
+    /**
+     * Updates the FCM token in Firestore.
+     *
+     * @param token the new FCM token
+     */
     private void updateToken(String token) {
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         DocumentReference documentReference = database.collection(Constants.KEY_COLLECTION_USERS)
                 .document(preferenceManager.getString(Constants.KEY_USER_ID));
-        documentReference.update(Constants.KEY_FCM_TOKEN,token)
+        documentReference.update(Constants.KEY_FCM_TOKEN, token)
                 .addOnSuccessListener(unused -> showToast("Token updated successfully"))
                 .addOnFailureListener(e -> showToast("Unable to update Token"));
     }
 
-    private void signOut(){
-        showToast("Signing out ...");
+    /**
+     * Signs the user out by clearing the FCM token in Firestore and shared preferences.
+     */
+    private void signOut() {
+        showToast("Signing out...");
         FirebaseFirestore database = FirebaseFirestore.getInstance();
         DocumentReference documentReference = database.collection(Constants.KEY_COLLECTION_USERS)
                 .document(preferenceManager.getString(Constants.KEY_USER_ID));
-        HashMap<String,Object> updates = new HashMap<>();
+        HashMap<String, Object> updates = new HashMap<>();
         updates.put(Constants.KEY_FCM_TOKEN, FieldValue.delete());
         documentReference.update(updates)
                 .addOnSuccessListener(unused -> {
